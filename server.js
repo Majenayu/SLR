@@ -10,11 +10,14 @@ const crypto = require('crypto'); // For hashing QR data
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? 'https://your-render-app.onrender.com' : '*', // Adjust origin for production
+  credentials: true
+}));
 app.use(express.static(__dirname)); // serve html, images (Meal1.jpg etc.)
 
 // ---------- MongoDB Connection ----------
-const mongoURI = "mongodb+srv://SLR:SLR@slr.eldww0q.mongodb.net/mess_db?retryWrites=true&w=majority&appName=SLR&serverSelectionTimeoutMS=10000&connectTimeoutMS=10000";
+const mongoURI = process.env.MONGODB_URI || "mongodb+srv://SLR:SLR@slr.eldww0q.mongodb.net/mess_db?retryWrites=true&w=majority&appName=SLR&serverSelectionTimeoutMS=10000&connectTimeoutMS=10000";
 
 mongoose.connect(mongoURI, {
     useNewUrlParser: true,
@@ -258,81 +261,55 @@ app.post("/book", async (req, res) => {
         user.orders.push(newOrder);
         await user.save();
 
-        console.log(`📋 Order booked: ${email} - ${mealName} (ID: ${newOrder._id}) at ${newOrder.date.toLocaleString()}`);
-        res.json({ success: true, totalOrders: user.orders.length });
+        console.log(`📝 New order: ${email} - ${mealName} for ₹${price}`);
+        res.json({ success: true });
     } catch (err) {
         console.error("Error booking meal:", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
 
-// ---------- Pay for today's unpaid orders (fake) ----------
+// ---------- Pay for orders ----------
 app.post("/pay", async (req, res) => {
     try {
         const { email } = req.body;
+        const now = new Date();
+        const todayStr = now.toDateString();
 
         if (!email) {
             return res.json({ success: false, error: "Missing email" });
         }
 
         const user = await User.findOne({ email });
-        if (!user) {
-            return res.json({ success: false, error: "User not found" });
-        }
+        if (!user) return res.json({ success: false, error: "User not found" });
 
-        const now = new Date();
-        const todayStr = now.toDateString();
-        const currentHour = now.getHours();
-
-        // Filter today's unpaid orders that are still within deadline
-        const todayUnpaid = user.orders.filter(o => {
-            const orderDate = new Date(o.date);
-            if (orderDate.toDateString() !== todayStr || o.paid) return false;
-            const orderHour = orderDate.getHours();
-            if (orderHour < 13) {
-                return currentHour < 13;
-            } else {
-                return currentHour < 23;
-            }
-        });
-
+        // Mark today's unpaid orders as paid
+        const todayUnpaid = user.orders.filter(o => new Date(o.date).toDateString() === todayStr && !o.paid);
         if (todayUnpaid.length === 0) {
-            return res.json({ success: false, error: "No unpaid orders today or deadline passed" });
+            return res.json({ success: false, error: "No unpaid orders today" });
         }
 
-        // Mark as paid
         todayUnpaid.forEach(order => {
             order.paid = true;
         });
+
+        // Prepare QR data
+        const qrData = JSON.stringify({
+            userEmail: email,
+            date: todayStr,
+            meals: todayUnpaid.map(order => ({
+                name: order.mealName,
+                price: order.price,
+                date: order.date
+            }))
+        });
+
+        // Generate QR code
+        const qrBase64 = await QRCode.toDataURL(qrData);
+
         await user.save();
-
-        // Fetch ALL today's paid orders (cumulative)
-        const allTodayPaid = user.orders.filter(o => new Date(o.date).toDateString() === todayStr && o.paid);
-
-        // Group for QR
-        const groupedMeals = allTodayPaid.reduce((acc, meal) => {
-            const name = meal.mealName;
-            if (!acc[name]) acc[name] = { quantity: 0, totalPrice: 0 };
-            acc[name].quantity++;
-            acc[name].totalPrice += meal.price;
-            return acc;
-        }, {});
-
-        const meals = allTodayPaid.map(o => ({
-            name: o.mealName,
-            price: o.price,
-            date: o.date
-        }));
-
-        // Generate QR data with user info
-        const qrDataObj = { userEmail: email, meals };
-        const qrData = JSON.stringify(qrDataObj);
-
-        // Generate QR as base64 data URL
-        const qrBase64 = await QRCode.toDataURL(qrData, { width: 200 });
-
-        console.log(`💳 Payment completed: ${email} - QR updated with ${allTodayPaid.length} total today's paid items`);
-        res.json({ success: true, meals, qrBase64, qrData });
+        console.log(`💳 Payment processed for ${email} - ${todayUnpaid.length} orders`);
+        res.json({ success: true, qrBase64, qrData });
     } catch (err) {
         console.error("Error processing payment:", err.message);
         res.status(500).json({ success: false, error: err.message });
@@ -346,11 +323,12 @@ app.post("/check-verified", async (req, res) => {
         const user = await User.findOne({ email: userEmail });
         if (!user) return res.json({ verified: false });
 
-        const verified = user.verifiedToday && user.verifiedToday.date === date && user.verifiedToday.verified;
-        res.json({ verified });
+        const verifiedToday = user.verifiedToday;
+        const isVerified = verifiedToday && verifiedToday.date === date && verifiedToday.verified;
+        res.json({ verified: isVerified });
     } catch (err) {
-        console.error("Error checking verified:", err.message);
-        res.status(500).json({ verified: false });
+        console.error("Error checking verification:", err.message);
+        res.json({ verified: false });
     }
 });
 
@@ -358,14 +336,23 @@ app.post("/check-verified", async (req, res) => {
 app.post("/verify", async (req, res) => {
     try {
         const { userEmail, date } = req.body;
+        const now = new Date();
+
+        if (!userEmail || !date) {
+            return res.json({ success: false, error: "Missing userEmail or date" });
+        }
+
         const user = await User.findOne({ email: userEmail });
         if (!user) return res.json({ success: false, error: "User not found" });
 
-        // Fetch today's paid orders
-        const allTodayPaid = user.orders.filter(o => new Date(o.date).toDateString() === date && o.paid);
+        // Get today's paid orders
+        const todayPaid = user.orders.filter(o => new Date(o.date).toDateString() === date && o.paid);
+        if (todayPaid.length === 0) {
+            return res.json({ success: false, error: "No paid orders to verify" });
+        }
 
         // Group meals
-        const groupedMeals = allTodayPaid.reduce((acc, meal) => {
+        const grouped = todayPaid.reduce((acc, meal) => {
             const name = meal.mealName;
             if (!acc[name]) acc[name] = { quantity: 0, totalPrice: 0 };
             acc[name].quantity++;
@@ -373,16 +360,18 @@ app.post("/verify", async (req, res) => {
             return acc;
         }, {});
 
+        // Update verifiedToday
         user.verifiedToday = {
             date,
             verified: true,
-            verifiedAt: new Date(),
-            meals: Object.entries(groupedMeals).map(([name, info]) => ({
+            verifiedAt: now,
+            meals: Object.entries(grouped).map(([name, info]) => ({
                 name,
                 quantity: info.quantity,
                 totalPrice: info.totalPrice
             }))
         };
+
         await user.save();
 
         console.log(`✅ Order verified for ${userEmail} on ${date}`);
@@ -555,6 +544,9 @@ app.get("/meal/:name", async (req, res) => {
 });
 
 // ---------- Serve dashboards (routes) ----------
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "index.html"));
+});
 app.get("/dashboard", (req, res) => {
     res.sendFile(path.join(__dirname, "dashboard.html"));
 });
@@ -621,8 +613,8 @@ app.use((err, req, res, next) => {
 });
 
 // ---------- Start server ----------
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
     console.log("📡 Make sure MongoDB Atlas connection is active");
 });
