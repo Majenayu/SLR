@@ -6,35 +6,56 @@
   <title>Producer Dashboard - MessMate</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     @keyframes slideIn {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .counter-card { animation: slideIn 0.3s ease-out; }
+    .counter-card { 
+      animation: slideIn 0.4s ease-out; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .counter-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    }
     #reader { width: 100%; max-width: 400px; margin: 0 auto; }
     #scanner-modal { z-index: 1000; }
     .scan-result { animation: slideIn 0.5s ease-out; }
+    .gradient-text {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .modal-overlay {
+      backdrop-filter: blur(8px);
+    }
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900 text-white p-6">
-  <div class="max-w-6xl mx-auto">
-    <div class="flex items-center justify-between mb-6">
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 text-white p-6 overflow-x-hidden">
+  <div class="max-w-6xl mx-auto px-4 md:px-6">
+    <div class="flex items-center justify-between mb-8">
       <div>
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Producer Dashboard</h1>
-        <p id="producer-welcome" class="text-sm text-white/80 mt-1"></p>
+        <h1 class="text-4xl font-bold gradient-text">Producer Dashboard</h1>
+        <p id="producer-welcome" class="text-base text-slate-300 mt-2 font-medium"></p>
       </div>
       <div class="flex items-center gap-4">
-        <button id="scanBtn" class="text-2xl hover:text-blue-400 transition cursor-pointer" title="Scan QR">🔍</button>
-        <button id="logout" class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 px-4 py-2 rounded-lg font-semibold transition transform hover:scale-105">Logout</button>
+        <button id="scanBtn" class="text-2xl p-4 bg-slate-800/50 hover:bg-slate-700/50 rounded-full transition-all duration-300 hover:scale-110 shadow-lg" title="Scan QR">
+          <i class="fas fa-qrcode"></i>
+        </button>
+        <button id="logout" class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">Logout</button>
       </div>
     </div>
 
     <!-- Stats Section -->
-    <div class="mb-8">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-        <h2 class="text-2xl font-bold text-blue-200">Order Statistics</h2>
-        <select id="periodSelect" class="bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500">
+    <section class="mb-12">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-3xl font-bold text-indigo-200 flex items-center gap-3">
+          <i class="fas fa-chart-pie"></i> Order Statistics
+        </h2>
+        <select id="periodSelect" class="bg-slate-700/80 text-white px-6 py-3 rounded-xl border border-slate-600/50 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 transition-all duration-200">
           <option value="day">Today</option>
           <option value="week">This Week</option>
           <option value="month">This Month</option>
@@ -43,346 +64,106 @@
       </div>
       
       <!-- Main Counters -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div class="counter-card bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl text-center shadow-lg hover:shadow-xl transition">
-          <h3 class="text-lg font-semibold text-white/80">Total Orders</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="counter-card bg-gradient-to-br from-blue-500/80 to-blue-600/80 backdrop-blur-sm p-6 rounded-2xl text-center border border-blue-700/50 shadow-xl hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-lg font-semibold text-white/90 mb-2 flex items-center justify-center gap-2">
+            <i class="fas fa-boxes text-blue-200"></i> Total Orders
+          </h3>
           <p class="text-3xl font-bold text-white" id="totalOrders">0</p>
         </div>
-        <div class="counter-card bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl text-center shadow-lg hover:shadow-xl transition">
-          <h3 class="text-lg font-semibold text-white/80">Paid Orders</h3>
+        <div class="counter-card bg-gradient-to-br from-emerald-500/80 to-emerald-600/80 backdrop-blur-sm p-6 rounded-2xl text-center border border-emerald-700/50 shadow-xl hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-lg font-semibold text-white/90 mb-2 flex items-center justify-center gap-2">
+            <i class="fas fa-check-circle text-emerald-200"></i> Paid Orders
+          </h3>
           <p class="text-3xl font-bold text-white" id="paidOrders">0</p>
         </div>
-        <div class="counter-card bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-xl text-center shadow-lg hover:shadow-xl transition">
-          <h3 class="text-lg font-semibold text-white/80">Unpaid Orders</h3>
+        <div class="counter-card bg-gradient-to-br from-red-500/80 to-red-600/80 backdrop-blur-sm p-6 rounded-2xl text-center border border-red-700/50 shadow-xl hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-lg font-semibold text-white/90 mb-2 flex items-center justify-center gap-2">
+            <i class="fas fa-exclamation-triangle text-red-200"></i> Unpaid Orders
+          </h3>
           <p class="text-3xl font-bold text-white" id="unpaidOrders">0</p>
         </div>
-        <div class="counter-card bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl text-center shadow-lg hover:shadow-xl transition">
-          <h3 class="text-lg font-semibold text-white/80" id="scannedLabel">Today's Verified</h3>
+        <div class="counter-card bg-gradient-to-br from-purple-500/80 to-purple-600/80 backdrop-blur-sm p-6 rounded-2xl text-center border border-purple-700/50 shadow-xl hover:shadow-2xl transition-all duration-300">
+          <h3 class="text-lg font-semibold text-white/90 mb-2 flex items-center justify-center gap-2" id="scannedLabel">
+            <i class="fas fa-qrcode text-purple-200"></i> Today's Verified
+          </h3>
           <p class="text-3xl font-bold text-white" id="scannedOrders">0</p>
         </div>
       </div>
 
       <!-- Food Types Counters -->
-      <div class="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl border border-slate-700/50">
-        <h3 class="text-xl font-bold mb-4 text-blue-200">Food Types Ordered</h3>
-        <div id="mealTypes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <div class="bg-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 shadow-xl">
+        <h3 class="text-2xl font-bold mb-6 text-indigo-200 flex items-center gap-3">
+          <i class="fas fa-utensils"></i> Food Types Ordered
+        </h3>
+        <div id="mealTypes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
       </div>
-    </div>
+    </section>
 
     <!-- Scanned Orders Verification Section -->
-    <div class="mb-8">
-      <h2 class="text-2xl font-bold mb-6 text-blue-200">Pending Verifications</h2>
-      <div id="pendingVerifications" class="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl border border-slate-700/50 space-y-4">
-        <p class="text-slate-400 text-center">Scan a QR to start verification.</p>
+    <section class="mb-12">
+      <h2 class="text-3xl font-bold mb-6 text-indigo-200 flex items-center gap-3">
+        <i class="fas fa-clipboard-list"></i> Pending Verifications
+      </h2>
+      <div id="pendingVerifications" class="bg-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 space-y-6 min-h-[200px] shadow-xl">
+        <div class="text-slate-400 text-center py-12 flex items-center justify-center gap-3">
+          <i class="fas fa-qrcode text-3xl opacity-50"></i>
+          <div>
+            <p class="text-lg">Scan a QR to start verification.</p>
+            <p class="text-sm mt-1">Ready to process student orders</p>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
 
     <!-- Live Updates Section -->
-    <div class="mb-8">
-      <h2 class="text-2xl font-bold mb-6 text-blue-200">Live Rating Updates</h2>
-      <div id="live" class="bg-slate-800/50 backdrop-blur-sm p-6 rounded-xl border border-slate-700/50 min-h-[100px]"></div>
-    </div>
+    <section class="mb-12">
+      <h2 class="text-3xl font-bold mb-6 text-indigo-200 flex items-center gap-3">
+        <i class="fas fa-star"></i> Live Rating Updates
+      </h2>
+      <div id="live" class="bg-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 min-h-[150px] shadow-xl overflow-y-auto max-h-96"></div>
+    </section>
   </div>
 
   <!-- Scanner Modal -->
-  <div id="scannerModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
-    <div class="bg-slate-800 rounded-xl p-6 max-w-md w-full mx-4 border border-slate-700 shadow-2xl">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-xl font-bold text-white">QR Scanner</h3>
-        <button id="closeScanner" class="text-2xl hover:text-red-400">×</button>
+  <div id="scannerModal" class="fixed inset-0 bg-black/80 modal-overlay flex items-center justify-center z-50 hidden">
+    <div class="bg-slate-800/95 backdrop-blur-sm rounded-2xl p-8 max-w-lg w-full mx-4 border border-slate-700/50 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-2xl font-bold gradient-text flex items-center gap-3">
+          <i class="fas fa-qrcode"></i> QR Scanner
+        </h3>
+        <button id="closeScanner" class="text-3xl hover:text-red-400 transition-colors duration-200">×</button>
       </div>
-      <div id="reader"></div>
-      <p class="text-sm text-slate-400 mt-2 text-center">Scan student's QR code</p>
+      <div id="reader" class="mb-4"></div>
+      <p class="text-base text-slate-300 text-center flex items-center justify-center gap-2">
+        <i class="fas fa-mobile-alt mr-2"></i> Scan student's QR code
+      </p>
     </div>
   </div>
 
   <!-- Verification Modal -->
-  <div id="verifyModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-slate-800 rounded-xl p-6 max-w-lg w-full mx-4 border border-slate-700 shadow-2xl max-h-[80vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-xl font-bold text-white">Verify Order</h3>
-        <button id="closeVerify" class="text-2xl hover:text-red-400">×</button>
+  <div id="verifyModal" class="fixed inset-0 bg-black/60 modal-overlay flex items-center justify-center z-50 hidden">
+    <div class="bg-slate-800/95 backdrop-blur-sm rounded-2xl p-8 max-w-2xl w-full mx-4 border border-slate-700/50 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-2xl font-bold gradient-text flex items-center gap-3">
+          <i class="fas fa-clipboard-check"></i> Verify Order
+        </h3>
+        <button id="closeVerify" class="text-3xl hover:text-red-400 transition-colors duration-200">×</button>
       </div>
-      <div id="verifyContent" class="space-y-4">
+      <div id="verifyContent" class="space-y-6">
         <!-- Dynamic content here -->
       </div>
-      <div class="flex justify-end gap-4 mt-6">
-        <button id="cancelVerify" class="px-4 py-2 bg-gray-600 rounded-lg hover:bg-gray-700">Cancel</button>
-        <button id="doneVerify" class="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700">Done & Verify</button>
+      <div class="flex justify-end gap-4 mt-8 pt-6 border-t border-slate-700/50">
+        <button id="cancelVerify" class="px-6 py-3 bg-gray-600/80 hover:bg-gray-700/80 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg"> 
+          <i class="fas fa-times mr-2"></i> Cancel
+        </button>
+        <button id="doneVerify" class="px-6 py-3 bg-emerald-600/80 hover:bg-emerald-700/80 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg">
+          <i class="fas fa-check mr-2"></i> Done & Verify
+        </button>
       </div>
     </div>
   </div>
 
-  <script>
-    const userEmail = localStorage.getItem('messmate_user_email');
-    const userRole = localStorage.getItem('messmate_user_role') || 'producer';
-    const userName = localStorage.getItem('messmate_user_name') || '';
-
-    if (!userEmail || userRole !== 'producer') {
-      window.location.href = '/';
-    }
-
-    document.getElementById('producer-welcome').textContent = `Hello, ${userName || userEmail} — Role: Producer`;
-    document.getElementById('logout').addEventListener('click', () => {
-      localStorage.removeItem('messmate_user_email');
-      localStorage.removeItem('messmate_user_role');
-      localStorage.removeItem('messmate_user_name');
-      window.location.href = '/';
-    });
-
-    const periodSelect = document.getElementById('periodSelect');
-    let html5QrCode;
-    let currentPending = []; // Local state for scanned pending verifications
-
-    function renderPending() {
-      const container = document.getElementById('pendingVerifications');
-      if (currentPending.length === 0) {
-        container.innerHTML = '<p class="text-slate-400 text-center">Scan a QR to start verification.</p>';
-        return;
-      }
-      container.innerHTML = currentPending.map((item, index) => `
-        <div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600/50">
-          <div class="flex justify-between items-start mb-2">
-            <h4 class="font-semibold text-white">${item.userName || 'Unknown'} (${item.userEmail})</h4>
-            <span class="text-sm text-green-400">Paid ✓</span>
-          </div>
-          <ul class="space-y-1 text-sm mb-3">
-            ${item.meals.map(m => `<li>• ${m.name} (Qty: ${m.quantity}) - ₹${m.totalPrice}</li>`).join('')}
-          </ul>
-          <button onclick="verifyOrder('${item.userEmail}', ${index})" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">Verify</button>
-        </div>
-      `).join('');
-    }
-
-    // Scanner setup
-    const scanBtn = document.getElementById('scanBtn');
-    const scannerModal = document.getElementById('scannerModal');
-    const closeScanner = document.getElementById('closeScanner');
-    const reader = document.getElementById('reader');
-
-    scanBtn.addEventListener('click', () => {
-      scannerModal.classList.remove('hidden');
-      startScanner();
-    });
-
-    closeScanner.addEventListener('click', () => {
-      scannerModal.classList.add('hidden');
-      stopScanner();
-    });
-
-    function startScanner() {
-      html5QrCode = new Html5Qrcode("reader");
-      const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-      html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        onScanError
-      );
-    }
-
-    function stopScanner() {
-      if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-          html5QrCode.clear();
-        }).catch(err => console.error('Error stopping scanner:', err));
-      }
-    }
-
-    function onScanSuccess(decodedText, decodedResult) {
-      stopScanner();
-      scannerModal.classList.add('hidden');
-      handleScan(decodedText);
-    }
-
-    function onScanError(error) {
-      // Silent fail
-    }
-
-    async function handleScan(qrData) {
-      try {
-        const parsed = JSON.parse(qrData);
-        if (!parsed.userEmail || !parsed.meals) {
-          alert('Invalid QR data');
-          return;
-        }
-
-        // Check if already verified
-        const res = await fetch('/check-verified', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userEmail: parsed.userEmail, date: new Date().toDateString() })
-        });
-        const check = await res.json();
-        if (check.verified) {
-          alert('QR already scanned and verified today. Invalid for re-scan.');
-          return;
-        }
-
-        // Fetch user name for display
-        const userRes = await fetch(`/user/${parsed.userEmail}`);
-        const userData = await userRes.json();
-        const userName = userData.success ? userData.name : 'Unknown';
-
-        // Group meals
-        const groupedMeals = parsed.meals.reduce((acc, meal) => {
-          const name = meal.name;
-          if (!acc[name]) acc[name] = { quantity: 0, totalPrice: 0 };
-          acc[name].quantity++;
-          acc[name].totalPrice += meal.price;
-          return acc;
-        }, {});
-
-        const scanItem = {
-          userEmail: parsed.userEmail,
-          userName,
-          meals: Object.entries(groupedMeals).map(([name, info]) => ({
-            name,
-            quantity: info.quantity,
-            totalPrice: info.totalPrice
-          }))
-        };
-
-        // Add to local pending
-        currentPending.push(scanItem);
-        renderPending();
-
-        // Show verification modal
-        showVerifyModal(scanItem);
-      } catch (e) {
-        alert('Error parsing QR: ' + e.message);
-      }
-    }
-
-    function showVerifyModal(data) {
-      const content = document.getElementById('verifyContent');
-      content.innerHTML = `
-        <div class="scan-result">
-          <p class="font-semibold text-blue-300">Student: ${data.userName} (${data.userEmail})</p>
-          <p class="text-sm text-slate-400 mb-4">Payment Status: <span class="text-green-400">Paid ✓</span></p>
-          <h4 class="font-semibold mb-2 text-green-400">Meals:</h4>
-          <ul class="space-y-2">
-            ${data.meals.map(m => `
-              <li class="flex justify-between">
-                <span>${m.name}</span>
-                <span class="text-right">Qty: ${m.quantity} | ₹${m.totalPrice}</span>
-              </li>
-            `).join('')}
-          </ul>
-          <p class="text-sm text-slate-400 mt-4">Total Items: ${data.meals.reduce((sum, m) => sum + m.quantity, 0)}</p>
-        </div>
-      `;
-
-      document.getElementById('verifyModal').classList.remove('hidden');
-      document.getElementById('doneVerify').onclick = () => verifyOrder(data.userEmail, currentPending.findIndex(p => p.userEmail === data.userEmail));
-      document.getElementById('cancelVerify').onclick = () => {
-        // Remove from pending if cancel
-        const index = currentPending.findIndex(p => p.userEmail === data.userEmail);
-        if (index > -1) currentPending.splice(index, 1);
-        renderPending();
-        document.getElementById('verifyModal').classList.add('hidden');
-      };
-      document.getElementById('closeVerify').onclick = () => {
-        document.getElementById('cancelVerify').onclick();
-      };
-    }
-
-    async function verifyOrder(userEmail, index) {
-      try {
-        const res = await fetch('/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userEmail, date: new Date().toDateString() })
-        });
-        const result = await res.json();
-        if (result.success) {
-          alert('Order verified successfully!');
-          // Remove from local pending
-          if (index > -1) currentPending.splice(index, 1);
-          renderPending();
-          loadStats(periodSelect.value);
-          document.getElementById('verifyModal').classList.add('hidden');
-        } else {
-          alert('Verification failed: ' + result.error);
-        }
-      } catch (e) {
-        alert('Error verifying: ' + e.message);
-      }
-    }
-
-    async function loadStats(period = 'day') {
-      try {
-        const res = await fetch(`/producer/stats?period=${period}`);
-        const data = await res.json();
-        
-        document.getElementById('totalOrders').textContent = data.total || 0;
-        document.getElementById('paidOrders').textContent = data.paid || 0;
-        document.getElementById('unpaidOrders').textContent = data.unpaid || 0;
-        document.getElementById('scannedOrders').textContent = data.verified || 0;
-        
-        const scannedLabel = document.getElementById('scannedLabel');
-        scannedLabel.textContent = period === 'day' ? "Today's Verified" : "Verified Orders";
-
-        // Food types
-        const mealTypesContainer = document.getElementById('mealTypes');
-        if (data.meals && Object.keys(data.meals).length > 0) {
-          const mealCards = Object.entries(data.meals).map(([name, count]) => `
-            <div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600/50">
-              <h4 class="font-semibold text-white">${name}</h4>
-              <p class="text-2xl font-bold text-green-400">${count} orders</p>
-            </div>
-          `).join('');
-          mealTypesContainer.innerHTML = mealCards;
-        } else {
-          mealTypesContainer.innerHTML = '<p class="text-slate-400 text-center col-span-full">No orders for this period.</p>';
-        }
-      } catch (err) {
-        console.error('Error loading stats:', err);
-      }
-    }
-
-    periodSelect.addEventListener('change', (e) => {
-      loadStats(e.target.value);
-    });
-
-    // SSE to listen to rating broadcasts
-    function startSSE() {
-      try {
-        const evtSource = new EventSource('/sse-ratings');
-        const live = document.getElementById('live');
-        evtSource.onmessage = function(event) {
-          try {
-            const payload = JSON.parse(event.data);
-            const mealName = payload.mealName;
-            const avgRating = payload.avgRating;
-            const totalRatings = payload.totalRatings;
-            // Append to live list
-            const entry = document.createElement('div');
-            entry.className = 'py-2 border-b border-slate-700/50 flex justify-between items-center';
-            entry.innerHTML = `
-              <span class="text-yellow-400">⭐ ${mealName}</span>
-              <span>Avg: ${avgRating} (${totalRatings} ratings)</span>
-            `;
-            live.insertBefore(entry, live.firstChild);
-            // Keep only last 10
-            while (live.children.length > 10) {
-              live.removeChild(live.lastChild);
-            }
-          } catch (e) { console.error('SSE parse error', e); }
-        };
-        evtSource.onerror = function(err) {
-          console.error('SSE error', err);
-          setTimeout(() => startSSE(), 3000); // Reconnect
-        };
-      } catch (err) {
-        console.error('SSE not supported or connection error', err);
-      }
-    }
-
-    // Initialize
-    loadStats('day');
-    renderPending(); // Start empty
-    startSSE();
-  </script>
+  <script src="script1.js"></script>
 </body>
 </html>
